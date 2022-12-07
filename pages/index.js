@@ -43,8 +43,6 @@ export default function Home() {
   const [disabledBtn, setDisabledBtn] = useState(false);
 
 
-
-
   const addWalletListener = () => {
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", async (accounts) => {
@@ -130,9 +128,8 @@ export default function Home() {
     let tokensId = selectedToken.map(function (obj) {
       return Number(obj.tokenId);
     });
-    console.log("staking", tokensId);
+    // console.log("staking", tokensId);
     let procced = false;
-
     if(!approved){
       const toastOne = toast.loading(`Requesting for approval of ${collectionInfo.name}...`);
       const { success, status } = await setApproval(collectionInfo.contractAddress, walletAddress);
@@ -169,8 +166,7 @@ export default function Home() {
     let tokensId = selectedToken.map(function (obj) {
       return Number(obj.tokenId);
     });
-    console.log("unstake", tokensId);
-
+    // console.log("unstake", tokensId);
     const toastTwo = toast.loading(`Unstaking your ${collectionInfo.name}...`);
     const { success, status } = await unStakeNFT(currentIndex, tokensId, walletAddress);
     toast.dismiss(toastTwo);

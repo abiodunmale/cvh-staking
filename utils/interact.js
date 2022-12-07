@@ -154,9 +154,9 @@ export const getTokenInformation = async (wallectAddress) => {
         });
 
         for (let index = 0; index < result.totalCount; index++) {
-            let justRefresh = await axios.get(`https://eth-goerli.g.alchemy.com/nft/v2/CH1V81ZMzVXNjIFWnRNNTTgY0nD_Twh6/getNFTMetadata?contractAddress=0x7F5683E7d88FEFaad727D38408b863811e128B1b&tokenId=${result.ownedNfts[index].tokenId}&tokenType=ERC721&refreshCache=true`).catch(function (error) {
-                console.log(error.toJSON());
-            });
+            // let justRefresh = await axios.get(`https://eth-goerli.g.alchemy.com/nft/v2/CH1V81ZMzVXNjIFWnRNNTTgY0nD_Twh6/getNFTMetadata?contractAddress=0x7F5683E7d88FEFaad727D38408b863811e128B1b&tokenId=${result.ownedNfts[index].tokenId}&tokenType=ERC721&refreshCache=true`).catch(function (error) {
+            //     console.log(error.toJSON());
+            // });
             let tokenId = result.ownedNfts[index].tokenId;
             let rawImg = result.ownedNfts[index].rawMetadata.image;
             var name = result.ownedNfts[index].rawMetadata.name;
@@ -190,7 +190,7 @@ export const getTokenInformation = async (wallectAddress) => {
             cid: stakedIdsArr[index].cid
         });        
     }
-    itemArray.sort((a, b) => parseFloat(a.tokenId) - parseFloat(b.tokenId));
+    itemArray.sort((a, b) => parseFloat(a.cid) - parseFloat(b.cid));
     return itemArray;
 };
 
