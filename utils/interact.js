@@ -18,7 +18,7 @@ const tokenContract = new web3.eth.Contract(tokenABI, tokenContractAddress);
 
 //staking config
 const stakingABI = require("./abi/staking.json");
-const stakingContractAddress = "0x64cD25f3c0a4b44f294f4380F3457841ccfec35C";
+const stakingContractAddress = "0x527b38320420f38F0d0793F04236f2b01eDAAdeE";
 const stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress);
 
 
@@ -137,35 +137,43 @@ function secondsToTime(secs){
     let duration = "";
     if(hours > 0) duration = hours+ " hour(s)";
     if(minutes > 0) duration = minutes+ " minute(s)"
-    if(hours > 24) duration = hours+ " day(s)"
+    // if(hours > 24) duration = hours+ " day(s)"
     
     return duration;
 }
 
-export const getTokenInformation = async (index, wallectAddress, contractAddress) => {
-    const stakedIdsArr = await getTokenIdsStaked(index, wallectAddress);
+export const getTokenInformation = async (wallectAddress) => {
+    const collectionArr = await getCollectionVault();
+    const stakedIdsArr = await getTokenIdsStaked(wallectAddress);
     let itemArray = [];
 
-    const result = await alchemy.nft.getNftsForOwner(wallectAddress, {
-        contractAddresses : [contractAddress]
-    });
+    for (let j = 0; j < collectionArr.length; j++) {
 
-    for (let index = 0; index < result.totalCount; index++) {
-        let tokenId = result.ownedNfts[index].tokenId;
-        let rawImg = result.ownedNfts[index].rawMetadata.image;
-        var name = result.ownedNfts[index].rawMetadata.name;
-        let image = rawImg.replace('ipfs://', 'https://ipfs.io/ipfs/');
-        itemArray.push({
-            name: name,
-            img: image,
-            tokenId: tokenId,
-            staked: false
+        const result = await alchemy.nft.getNftsForOwner(wallectAddress, {
+            contractAddresses : [collectionArr[j].contractAddress]
         });
+
+        for (let index = 0; index < result.totalCount; index++) {
+            let justRefresh = await axios.get(`https://eth-goerli.g.alchemy.com/nft/v2/CH1V81ZMzVXNjIFWnRNNTTgY0nD_Twh6/getNFTMetadata?contractAddress=0x7F5683E7d88FEFaad727D38408b863811e128B1b&tokenId=${result.ownedNfts[index].tokenId}&tokenType=ERC721&refreshCache=true`).catch(function (error) {
+                console.log(error.toJSON());
+            });
+            let tokenId = result.ownedNfts[index].tokenId;
+            let rawImg = result.ownedNfts[index].rawMetadata.image;
+            var name = result.ownedNfts[index].rawMetadata.name;
+            let image = rawImg.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            itemArray.push({
+                name: name,
+                img: image,
+                tokenId: tokenId,
+                staked: false,
+                cid: j
+            });
+        }
     }
 
     //owned nft token from staking contract
     for (let index = 0; index < stakedIdsArr.length; index++) {
-        const rawUriS = await (await getCollectionInstance(contractAddress)).methods.tokenURI(stakedIdsArr[index]).call();
+        const rawUriS = await (await getCollectionInstance(collectionArr[stakedIdsArr[index].cid].contractAddress)).methods.tokenURI(stakedIdsArr[index].tokenId).call();
         console.log("uri", rawUriS);
         let cleanUriS = rawUriS.replace('ipfs://', 'https://ipfs.io/ipfs/');
         let metadataS = await axios.get(`${cleanUriS}`).catch(function (error) {
@@ -177,11 +185,11 @@ export const getTokenInformation = async (index, wallectAddress, contractAddress
         itemArray.push({
             name: nameS,
             img: imageS,
-            tokenId: stakedIdsArr[index],
-            staked: true
+            tokenId: stakedIdsArr[index].tokenId,
+            staked: true,
+            cid: stakedIdsArr[index].cid
         });        
     }
-
     itemArray.sort((a, b) => parseFloat(a.tokenId) - parseFloat(b.tokenId));
     return itemArray;
 };
@@ -244,15 +252,28 @@ export const getTokenBalance = async (wallectAddress) => {
 
 //start staking
 
-export const getEarnings = async (index, wallectAddress) => {
-    const result = await stakingContract.methods.earnings(index, wallectAddress).call();
+export const getEarnings = async (wallectAddress) => {
+    const result = await stakingContract.methods.earnings(wallectAddress).call();
     const resultEther = web3.utils.fromWei(result, "ether");
     return resultEther;
 };
 
-const getTokenIdsStaked = async (index, wallectAddress) => {
-    const result = await stakingContract.methods.tokenOfOwner(index, wallectAddress).call();
+const getTokenStakedBalance = async (wallectAddress) => {
+    const result = await stakingContract.methods.balanceOf(wallectAddress).call();
     return result;
+}
+
+const getTokenIdsStaked = async (wallectAddress) => {
+    const bal = await getTokenStakedBalance(wallectAddress);
+    const resultArr = await stakingContract.methods.tokenOfOwnerStaked(wallectAddress).call();
+    let tokens =[];
+    for (let index = 0; index < bal; index++) {
+        tokens.push({
+            tokenId : resultArr[index].tokenId,
+            cid: resultArr[index].cid
+        })
+    }
+    return tokens;
 };
 
 
@@ -273,8 +294,8 @@ export const getCollectionVault = async () => {
     return allCollection;
 };
 
-export const claimReward = async (index, wallectAddress) => {
-    await stakingContract.methods.claimRewards(index)
+export const claimReward = async (wallectAddress) => {
+    await stakingContract.methods.claimRewards()
     .send({
       from: wallectAddress,
       to: stakingContractAddress
@@ -332,5 +353,6 @@ export const unStakeNFT = async (index, tokens, wallectAddress) => {
 //end staking
 
 export {
-    getTokenIdsStaked
+    getTokenIdsStaked,
+    getTokenStakedBalance
 }
